@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DistriKV — Distributed Fault-Tolerant Cluster</title>
+    <meta name="description" content="Real-time monitoring, key-value explorer, topology viewer, and terminal console for DistriKV — a distributed cluster built with C++ Berkeley Sockets.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Ambient glows -->
+<div class="ambient-glow glow-1"></div>
+<div class="ambient-glow glow-2"></div>
+<div class="ambient-glow glow-3"></div>
+
+<!-- ═══════════════════ APP SHELL ═══════════════════ -->
+<div class="app-shell">
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar glass-card" id="sidebar">
+        <!-- Brand -->
+        <div class="sidebar-brand">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="2 17 12 22 22 17" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="2 12 12 17 22 12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-title">Distri<span class="gradient-text">KV</span></div>
+                <div class="brand-sub">C++ Berkeley Sockets</div>
+            </div>
+        </div>
+
+        <!-- Cluster status pill -->
+        <div class="sidebar-status-pill" id="sidebar-health-pill">
+            <span class="status-pulse-dot"></span>
+            <span id="sidebar-health-text">Connecting…</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <a class="nav-item active" data-page="dashboard" href="#dashboard" id="nav-dashboard">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </a>
+            <a class="nav-item" data-page="explorer" href="#explorer" id="nav-explorer">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                KV Explorer
+                <span class="nav-badge" id="nav-keys-badge">0</span>
+            </a>
+            <a class="nav-item" data-page="topology" href="#topology" id="nav-topology">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Topology
+                <span class="nav-badge nodes-badge" id="nav-nodes-badge">3</span>
+            </a>
+            <a class="nav-item" data-page="terminal" href="#terminal" id="nav-terminal">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                Terminal
+            </a>
+            <a class="nav-item" data-page="architecture" href="#architecture" id="nav-architecture">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Architecture
+            </a>
+        </nav>
+
+        <!-- Sidebar footer stats -->
+        <div class="sidebar-footer">
+            <div class="sf-row"><span class="sf-label">Leader</span><span class="sf-val" id="sf-leader">—</span></div>
+            <div class="sf-row"><span class="sf-label">Term</span><span class="sf-val" id="sf-term">0</span></div>
+            <div class="sf-row"><span class="sf-label">Uptime</span><span class="sf-val" id="sf-uptime">—</span></div>
+            <div class="sf-row"><span class="sf-label">Live Sync</span>
+                <label class="switch">
+                    <input type="checkbox" id="auto-refresh-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ─── MAIN CONTENT ─── -->
+    <main class="main-content" id="main-content">
+
+        <!-- ════════════ PAGE: DASHBOARD ════════════ -->
+        <section class="page active" id="page-dashboard">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Cluster Dashboard</h1>
+                    <p class="page-subtitle">Real-time health metrics and distributed state overview.</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="btn-refresh">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
+                    <button class="btn btn-warning btn-sm" id="btn-chaos-failover">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Kill Leader
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="btn-run-bench">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Benchmark
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI grid -->
+            <div class="kpi-grid">
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon icon-nodes">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Active Nodes</span>
+                        <span class="kpi-value" id="kpi-nodes-val">0 / 3</span>
+                        <span class="kpi-subtext">Quorum: 2/3 required</span>
+                    </div>
+                </div>
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon icon-keys">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Stored Keys</span>
+                        <span class="kpi-value" id="kpi-keys-val">0</span>
+                        <span class="kpi-subtext">Replicated across followers</span>
+                    </div>
+                </div>
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon icon-ops">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Client Ops</span>
+                        <span class="kpi-value" id="kpi-ops-val">0</span>
+                        <span class="kpi-subtext">PUT + GET + DEL</span>
+                    </div>
+                </div>
+                <div class="kpi-card glass-card">
+                    <div class="kpi-icon icon-term">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Consensus Term</span>
+                        <span class="kpi-value" id="kpi-term-val">Term 0</span>
+                        <span class="kpi-subtext">Raft-style election round</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Node cards summary row -->
+            <div class="section-header-row">
+                <h2 class="section-title">Node Summary</h2>
+                <a class="btn btn-secondary btn-sm" data-page="topology" href="#topology">View Full Topology →</a>
+            </div>
+            <div class="nodes-grid" id="dash-nodes-container"></div>
+
+            <!-- Bottom 2-col: recent ops + quick-put -->
+            <div class="dash-bottom-grid">
+                <!-- Quick PUT -->
+                <div class="glass-card card-pad">
+                    <h3 class="card-title mb-8">Quick Write</h3>
+                    <p class="card-subtitle mb-16">Commit a key-value pair directly to the cluster leader.</p>
+                    <form id="dash-put-form" class="kv-quick-insert">
+                        <div class="input-group"><input type="text" id="dash-key" placeholder="Key (e.g. user:99)" required autocomplete="off"></div>
+                        <div class="input-group"><input type="text" id="dash-val" placeholder="Value (e.g. Charlie)" required autocomplete="off"></div>
+                        <div class="input-group"><input type="number" id="dash-ttl" placeholder="TTL s (0=∞)" min="0" autocomplete="off"></div>
+                        <button type="submit" class="btn btn-primary" id="btn-dash-put">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            PUT
+                        </button>
+                    </form>
+                    <div class="put-feedback" id="dash-put-feedback"></div>
+                </div>
+                <!-- Event log preview -->
+                <div class="glass-card card-pad">
+                    <div class="flex-between mb-8">
+                        <h3 class="card-title">Event Feed</h3>
+                        <a class="btn btn-secondary btn-sm" data-page="terminal" href="#terminal">Full Logs →</a>
+                    </div>
+                    <div class="logs-feed mini" id="dash-event-feed"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════ PAGE: KV EXPLORER ════════════ -->
+        <section class="page" id="page-explorer">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Key-Value Explorer</h1>
+                    <p class="page-subtitle">Browse, search, write, and delete records in the distributed store.</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-secondary btn-sm" id="btn-kv-refresh">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
+                    <span class="badge badge-accent" id="kv-count-badge">0 Keys</span>
+                </div>
+            </div>
+
+            <!-- Write form -->
+            <div class="glass-card card-pad">
+                <h3 class="card-title mb-12">Write Record</h3>
+                <form id="kv-insert-form" class="kv-quick-insert">
+                    <div class="input-group"><input type="text" id="input-key" placeholder="Key (e.g. user:42)" required autocomplete="off"></div>
+                    <div class="input-group"><input type="text" id="input-value" placeholder="Value (e.g. Alice)" required autocomplete="off"></div>
+                    <div class="input-group"><input type="number" id="input-ttl" placeholder="TTL (s, 0=∞)" min="0" autocomplete="off"></div>
+                    <button type="submit" class="btn btn-primary" id="btn-put-submit">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        PUT
+                    </button>
+                </form>
+            </div>
+
+            <!-- Filter + table -->
+            <div class="glass-card card-pad">
+                <div class="kv-toolbar">
+                    <div class="table-search-box">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="filter-keys-input" placeholder="Filter by key prefix or pattern…" autocomplete="off">
+                    </div>
+                    <div class="kv-toolbar-right">
+                        <select id="kv-namespace-filter" class="ns-select">
+                            <option value="">All namespaces</option>
+                            <option value="user:">user:</option>
+                            <option value="session:">session:</option>
+                            <option value="config:">config:</option>
+                            <option value="product:">product:</option>
+                            <option value="order:">order:</option>
+                            <option value="cache:">cache:</option>
+                            <option value="metric:">metric:</option>
+                            <option value="flag:">flag:</option>
+                            <option value="analytics:">analytics:</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="kv-table">
+                        <thead>
+                            <tr>
+                                <th class="col-key">Key</th>
+                                <th class="col-value">Value</th>
+                                <th class="col-size">Size</th>
+                                <th class="col-ns">Namespace</th>
+                                <th class="col-action" style="text-align:right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kv-table-body">
+                            <tr><td colspan="5" class="empty-state">Loading keys…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer">
+                    <span id="kv-showing-text" class="text-dim">Showing 0 keys</span>
+                    <div class="pagination" id="kv-pagination"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════ PAGE: TOPOLOGY ════════════ -->
+        <section class="page" id="page-topology">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Cluster Topology</h1>
+                    <p class="page-subtitle">Node roles, replication links, heartbeat channels, and fault injection controls.</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-warning btn-sm" id="topo-chaos-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Kill Leader (Chaos)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Replication diagram -->
+            <div class="topo-diagram glass-card">
+                <div class="topo-diagram-inner" id="topo-diagram">
+                    <!-- SVG arrows + node bubbles rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Full node cards -->
+            <div class="section-header-row">
+                <h2 class="section-title">Node Details</h2>
+                <span class="text-dim" id="topo-peer-summary"></span>
+            </div>
+            <div class="nodes-grid topo-nodes-grid" id="topo-nodes-container"></div>
+        </section>
+
+        <!-- ════════════ PAGE: TERMINAL ════════════ -->
+        <section class="page" id="page-terminal">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Terminal &amp; Logs</h1>
+                    <p class="page-subtitle">Direct Berkeley Sockets query console and live event stream.</p>
+                </div>
+                <div class="page-actions">
+                    <div class="pill-selector">
+                        <button class="pill-btn active" id="tab-terminal-btn">Terminal</button>
+                        <button class="pill-btn" id="tab-logs-btn">Event Feed</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="terminal-workspace">
+                <!-- Left: terminal -->
+                <div class="terminal-col glass-card card-pad" id="pane-terminal">
+                    <div class="terminal-screen" id="terminal-screen">
+                        <div class="terminal-line system-line">DistriKV Berkeley Sockets Interactive Console</div>
+                        <div class="terminal-line system-line">Commands: PUT &lt;key&gt; &lt;val&gt; [ttl], GET &lt;key&gt;, DEL &lt;key&gt;, KEYS, STATS, CLUSTER, PING</div>
+                        <div class="terminal-line system-line">─────────────────────────────────────────────────────</div>
+                    </div>
+                    <form id="terminal-form" class="terminal-input-bar">
+                        <span class="prompt-symbol">›</span>
+                        <input type="text" id="terminal-input" placeholder="Type command…" autocomplete="off" spellcheck="false">
+                        <button type="submit" class="btn btn-secondary btn-sm" id="btn-send-cmd">Execute</button>
+                    </form>
+                    <div class="terminal-quick-cmds">
+                        <span class="tqc-label">Quick:</span>
+                        <button class="tqc-btn" onclick="dashboard.quickCmd('PING')">PING</button>
+                        <button class="tqc-btn" onclick="dashboard.quickCmd('STATS')">STATS</button>
+                        <button class="tqc-btn" onclick="dashboard.quickCmd('CLUSTER')">CLUSTER</button>
+                        <button class="tqc-btn" onclick="dashboard.quickCmd('KEYS *')">KEYS *</button>
+                        <button class="tqc-btn" onclick="dashboard.quickCmd('GET user:1')">GET user:1</button>
+                        <button class="tqc-btn" onclick="dashboard.clearTerminal()">Clear</button>
+                    </div>
+                </div>
+                <!-- Right: logs -->
+                <div class="terminal-col glass-card card-pad" id="pane-logs">
+                    <div class="flex-between mb-8">
+                        <h3 class="card-title">Event Feed</h3>
+                        <button class="btn btn-secondary btn-sm" onclick="dashboard.clearLogs()">Clear</button>
+                    </div>
+                    <div class="logs-feed" id="logs-feed"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════ PAGE: ARCHITECTURE ════════════ -->
+        <section class="page" id="page-architecture">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Architecture &amp; Design</h1>
+                    <p class="page-subtitle">How DistriKV implements distributed consensus, fault tolerance, and replication.</p>
+                </div>
+            </div>
+
+            <div class="arch-grid">
+                <!-- Stack overview -->
+                <div class="glass-card card-pad arch-card-wide">
+                    <h3 class="card-title mb-12">System Stack</h3>
+                    <div class="stack-layers">
+                        <div class="stack-layer layer-client">
+                            <span class="layer-label">CLI Client / Web Dashboard</span>
+                            <span class="layer-tag">TCP · PUT / GET / DEL</span>
+                        </div>
+                        <div class="stack-arrow">▼</div>
+                        <div class="stack-layer layer-primary">
+                            <span class="layer-label">Primary Node (Leader)</span>
+                            <span class="layer-tag">Raft-style Election · Term tracking</span>
+                        </div>
+                        <div class="stack-row">
+                            <div class="stack-arrow">▼ TCP Replication</div>
+                            <div class="stack-arrow">▼ TCP Replication</div>
+                        </div>
+                        <div class="stack-peers">
+                            <div class="stack-layer layer-secondary"><span class="layer-label">Secondary Node 2</span><span class="layer-tag">Follower</span></div>
+                            <div class="stack-layer layer-secondary"><span class="layer-label">Secondary Node 3</span><span class="layer-tag">Follower</span></div>
+                        </div>
+                        <div class="stack-arrow">▼ HTTP/REST</div>
+                        <div class="stack-layer layer-bridge">
+                            <span class="layer-label">Python Web Bridge</span>
+                            <span class="layer-tag">HTTP → Berkeley Sockets translation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tech cards -->
+                <div class="glass-card card-pad arch-card">
+                    <div class="arch-icon-row">
+                        <div class="arch-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h3 class="card-title">Wire Protocol</h3>
+                    </div>
+                    <p class="arch-text">Custom binary framing with a 24-byte header: 4-byte magic <code class="ic">DKV1</code>, version, message type, flags, Raft term, payload length, and CRC32 checksum. Falls back to newline-delimited text for plain-socket CLI.</p>
+                    <div class="code-block">struct MsgHeader {<br>&nbsp;&nbsp;uint32_t magic;   // 0x444B5631<br>&nbsp;&nbsp;uint8_t  version;<br>&nbsp;&nbsp;uint8_t  msg_type;<br>&nbsp;&nbsp;uint16_t flags;<br>&nbsp;&nbsp;uint64_t term;<br>&nbsp;&nbsp;uint32_t length;<br>&nbsp;&nbsp;uint32_t checksum; // CRC32<br>};</div>
+                </div>
+
+                <div class="glass-card card-pad arch-card">
+                    <div class="arch-icon-row">
+                        <div class="arch-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        </div>
+                        <h3 class="card-title">Leader Election</h3>
+                    </div>
+                    <p class="arch-text">Raft-inspired consensus. Followers detect leader failure via UDP heartbeat timeout (randomized 150–300 ms). A candidate broadcasts <code class="ic">VOTE_REQ</code> over TCP; first to reach quorum (2/3) wins and immediately sends <code class="ic">LEADER_ANNOUNCE</code>.</p>
+                    <div class="election-steps">
+                        <div class="estep"><span class="estep-num">1</span><span>HB timeout → CANDIDATE</span></div>
+                        <div class="estep"><span class="estep-num">2</span><span>Broadcast VOTE_REQ (term+1)</span></div>
+                        <div class="estep"><span class="estep-num">3</span><span>Collect votes (need ≥ 2)</span></div>
+                        <div class="estep"><span class="estep-num">4</span><span>Promote → PRIMARY</span></div>
+                        <div class="estep"><span class="estep-num">5</span><span>Broadcast LEADER_ANNOUNCE</span></div>
+                    </div>
+                </div>
+
+                <div class="glass-card card-pad arch-card">
+                    <div class="arch-icon-row">
+                        <div class="arch-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                        <h3 class="card-title">Storage Engine</h3>
+                    </div>
+                    <p class="arch-text">In-memory hash table (<code class="ic">std::unordered_map</code>) protected by <code class="ic">std::shared_mutex</code> for concurrent reads. Writes acquire exclusive lock. Supports per-key TTL expiry, atomic DKVSNAP1 snapshots to disk, and a WAL-style replication log.</p>
+                    <div class="code-block">StorageEngine::<br>&nbsp;&nbsp;put(key, val, ttl_sec)<br>&nbsp;&nbsp;get(key) → optional&lt;string&gt;<br>&nbsp;&nbsp;del(key) → bool<br>&nbsp;&nbsp;snapshot() → disk<br>&nbsp;&nbsp;restore(path)</div>
+                </div>
+
+                <div class="glass-card card-pad arch-card">
+                    <div class="arch-icon-row">
+                        <div class="arch-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3 class="card-title">Fault Tolerance</h3>
+                    </div>
+                    <p class="arch-text">The cluster survives any single-node failure. If the PRIMARY crashes, remaining nodes elect a new leader within ~500 ms. Clients are automatically redirected via <code class="ic">MOVED host:port</code>. Failed nodes can rejoin as SECONDARY and receive a full state sync.</p>
+                    <div class="fault-table">
+                        <div class="ft-row"><span>Nodes failed</span><span class="ftv green">1 → Operational</span></div>
+                        <div class="ft-row"><span>Nodes failed</span><span class="ftv amber">2 → Read-only</span></div>
+                        <div class="ft-row"><span>Nodes failed</span><span class="ftv red">3 → Cluster Down</span></div>
+                    </div>
+                </div>
+
+                <div class="glass-card card-pad arch-card">
+                    <div class="arch-icon-row">
+                        <div class="arch-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                        </div>
+                        <h3 class="card-title">Berkeley Sockets</h3>
+                    </div>
+                    <p class="arch-text">All networking is hand-written using POSIX headers: <code class="ic">sys/socket.h</code>, <code class="ic">netinet/in.h</code>, <code class="ic">arpa/inet.h</code>. No third-party networking libraries. Implements non-blocking <code class="ic">connect()</code> via <code class="ic">select()</code>, reliable <code class="ic">send_all()</code>/<code class="ic">recv_all()</code> loops, and TCP + UDP multiplexing.</p>
+                    <div class="sock-tags">
+                        <span class="sock-tag">TCP :8001-8003 (data)</span>
+                        <span class="sock-tag">UDP :9001-9003 (heartbeats)</span>
+                        <span class="sock-tag">HTTP :8080 (bridge)</span>
+                    </div>
+                </div>
+
+                <!-- Live cluster stats -->
+                <div class="glass-card card-pad arch-card-wide">
+                    <h3 class="card-title mb-12">Live Cluster Snapshot</h3>
+                    <div class="live-stats-grid" id="arch-live-stats">
+                        <div class="ls-item"><div class="ls-label">Status</div><div class="ls-val" id="arch-status">—</div></div>
+                        <div class="ls-item"><div class="ls-label">Leader</div><div class="ls-val" id="arch-leader">—</div></div>
+                        <div class="ls-item"><div class="ls-label">Term</div><div class="ls-val" id="arch-term">0</div></div>
+                        <div class="ls-item"><div class="ls-label">Active Nodes</div><div class="ls-val" id="arch-nodes">0/3</div></div>
+                        <div class="ls-item"><div class="ls-label">Total Keys</div><div class="ls-val" id="arch-keys">0</div></div>
+                        <div class="ls-item"><div class="ls-label">Client Ops</div><div class="ls-val" id="arch-ops">0</div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ─── BENCHMARK MODAL ─── -->
+<div class="modal-overlay hidden" id="bench-modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 class="modal-title">Stress Benchmark</h3>
+            <button class="btn-close" id="btn-close-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="bench-modal-body">
+            <div class="benchmark-loading">
+                <div class="spinner"></div>
+                <p>Running multi-threaded benchmark over BSD Sockets…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

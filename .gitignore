@@ -1,0 +1,24 @@
+# Compiled files
+bin/*
+obj/*
+*.o
+*.out
+
+# Runtime data and logs
+logs/*
+data/*
+
+# Python cache and virtual environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Editor files
+.vscode/
+.idea/
